@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Language Speaker</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            text-align: center; 
+            background: #0f172a; 
+            color: #f8fafc; 
+            margin: 0;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            height: 80vh;
+        }
+        h2 { color: #94a3b8; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px; }
+        #sign { font-size: 4.5rem; color: #38bdf8; font-weight: 800; margin: 1rem 0; min-height: 100px; }
+        #confidence { font-size: 1.2rem; color: #4ade80; font-weight: 600; }
+        #status { color: #64748b; font-size: 0.9rem; margin-top: 2rem; }
+        .btn {
+            background: #0284c7; color: white; border: none; padding: 1rem 2rem;
+            font-size: 1.1rem; border-radius: 12px; font-weight: bold; margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <h2>Translating Sign...</h2>
+    <div id="sign">READY</div>
+    <div id="confidence"></div>
+    
+    <button class="btn" onclick="enableAudio()">Tap to Enable iPhone Audio</button>
+    <p id="status">Connecting...</p>
+
+    <script>
+        const socket = io();
+        let lastSpoken = "";
+        let audioEnabled = false;
+
+        function enableAudio() {
+            let unlockUtterance = new SpeechSynthesisUtterance("Audio active");
+            window.speechSynthesis.speak(unlockUtterance);
+            audioEnabled = true;
+            document.querySelector('.btn').style.background = "#22c55e";
+            document.querySelector('.btn').innerText = "Audio Enabled ✓";
+        }
+
+        socket.on('connect', () => {
+            document.getElementById('status').innerText = "Connected to Laptop AI Server";
+        });
+
+        socket.on('new_sign', (data) => {
+            document.getElementById('sign').innerText = data.sign;
+            document.getElementById('confidence').innerText = data.confidence + "% Match";
+            
+            if (data.sign !== lastSpoken && audioEnabled) {
+                let utterance = new SpeechSynthesisUtterance(data.sign);
+                utterance.rate = 0.9;
+                window.speechSynthesis.speak(utterance);
+                lastSpoken = data.sign;
+            }
+        });
+    </script>
+</body>
+</html>
