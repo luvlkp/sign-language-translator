@@ -1,10 +1,17 @@
 from flask import Flask, render_template
 from flask_socketio import SocketIO
 import cv2
-import mediapipe as mp
 import numpy as np
 import pickle
 import os
+import mediapipe as mp
+
+# Safe compatibility import for MediaPipe Hands
+try:
+    mp_hands = mp.solutions.hands
+except AttributeError:
+    import mediapipe.python.solutions.hands as mp_hands
+
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")

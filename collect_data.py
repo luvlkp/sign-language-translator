@@ -1,10 +1,17 @@
 import cv2
-import mediapipe as mp
 import csv
 import os
+import mediapipe as mp
 
-# Set up MediaPipe for single-hand detection
-mp_hands = mp.solutions.hands
+# Safe compatibility import for MediaPipe Hands
+try:
+    mp_hands = mp.solutions.hands
+    mp_drawing = mp.solutions.drawing_utils
+except AttributeError:
+    import mediapipe.python.solutions.hands as mp_hands
+    import mediapipe.python.solutions.drawing_utils as mp_drawing
+
+# Initialize MediaPipe Hands
 hands = mp_hands.Hands(
     static_image_mode=False, 
     max_num_hands=1, 
@@ -16,7 +23,8 @@ STREAM_URL = 0
 
 cap = cv2.VideoCapture(STREAM_URL)
 
-TARGET_GESTURES = ["WATER", "YES", "NO", "SICK", "BATHROOM", "PLEASE"]
+TARGET_GESTURES = ["WATER", "YES", "NO", "SICK", "BATHROOM", "PLEASE",
+    "HELP", "HURT", "HOT", "COLD", "MORE", "MEDICINE", "STOP", "ME", "YOU"]
 print("Target Gestures available:", TARGET_GESTURES)
 label = input("Enter gesture label to collect (must match one above): ").strip().upper()
 
@@ -55,7 +63,7 @@ with open(csv_file, mode='a', newline='') as f:
             for lm in hand_landmarks.landmark:
                 keypoints.extend([lm.x - wrist.x, lm.y - wrist.y, lm.z - wrist.z])
             
-            mp.solutions.drawing_utils.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+            mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
 
         cv2.putText(frame, f"Label: {label} | Saved: {count}", (20, 40), 
                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
