@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign Language Speaker</title>
-    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <!-- Loaded from the laptop (server/static/) so the page works without internet -->
+    <script src="/static/socket.io.min.js"></script>
     <style>
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
@@ -22,6 +23,7 @@
         #sign { font-size: 4.5rem; color: #38bdf8; font-weight: 800; margin: 1rem 0; min-height: 100px; }
         #confidence { font-size: 1.2rem; color: #4ade80; font-weight: 600; }
         #status { color: #64748b; font-size: 0.9rem; margin-top: 2rem; }
+        #camera { color: #94a3b8; font-size: 1rem; margin-top: 0.25rem; }
         .btn {
             background: #0284c7; color: white; border: none; padding: 1rem 2rem;
             font-size: 1.1rem; border-radius: 12px; font-weight: bold; margin-top: 1rem;
@@ -35,10 +37,11 @@
     
     <button class="btn" onclick="enableAudio()">Tap to Enable iPhone Audio</button>
     <p id="status">Connecting...</p>
+    <p id="camera"></p>
 
     <script>
-        const socket = io();
-        let lastSpoken = "";
+        const statusEl = document.getElementById('status');
+        const cameraEl = document.getElementById('camera');
         let audioEnabled = false;
 
         function enableAudio() {
@@ -49,21 +52,40 @@
             document.querySelector('.btn').innerText = "Audio Enabled ✓";
         }
 
-        socket.on('connect', () => {
-            document.getElementById('status').innerText = "Connected to Laptop AI Server";
-        });
+        if (typeof io === 'undefined') {
+            // The Socket.IO script didn't load, so the page can never connect
+            statusEl.innerText = "Couldn't load socket.io.min.js. Put it in server/static/ and restart app.py.";
+        } else {
+            const socket = io();  // connects back to whichever laptop served this page
 
-        socket.on('new_sign', (data) => {
-            document.getElementById('sign').innerText = data.sign;
-            document.getElementById('confidence').innerText = data.confidence + "% Match";
-            
-            if (data.sign !== lastSpoken && audioEnabled) {
-                let utterance = new SpeechSynthesisUtterance(data.sign);
-                utterance.rate = 0.9;
-                window.speechSynthesis.speak(utterance);
-                lastSpoken = data.sign;
-            }
-        });
+            socket.on('connect', () => {
+                statusEl.innerText = "Connected to Laptop AI Server";
+            });
+
+            socket.on('disconnect', () => {
+                statusEl.innerText = "Disconnected. Is app.py still running?";
+                cameraEl.innerText = "";
+            });
+
+            // Camera / hand status sent by app.py
+            socket.on('status', (data) => {
+                cameraEl.innerText = data.msg;
+            });
+
+            socket.on('new_sign', (data) => {
+                document.getElementById('sign').innerText = data.sign;
+                document.getElementById('confidence').innerText = data.confidence + "% Match";
+
+                // app.py already decides when a sign should be repeated,
+                // so speak every sign it sends
+                if (audioEnabled) {
+                    window.speechSynthesis.cancel();  // don't let old words pile up
+                    let utterance = new SpeechSynthesisUtterance(data.sign);
+                    utterance.rate = 0.9;
+                    window.speechSynthesis.speak(utterance);
+                }
+            });
+        }
     </script>
 </body>
 </html>
